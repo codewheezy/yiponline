@@ -2,6 +2,7 @@ import { Text, View, StyleSheet, TextInput, Button, Image, Alert, FlatList } fro
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
 import * as Notifications from 'expo-notifications';
+import * as ImagePicker from 'expo-image-picker';
 
 
 const ProductManagement = () => {
@@ -11,64 +12,77 @@ const ProductManagement = () => {
     const [photo, setPhoto] = useState(null);
 
     const addProduct = () => {
-        if (products.length >= 5) {
-          notifyUser();
-          return;
-        }
+      if (products.length >= 5) {
+        notifyUser();
+        return;
+      }
+
+      const newProduct = { name, price, photo };
+      const updatedProducts = [...products, newProduct];
+      setProducts(updatedProducts);
+      saveProducts(updatedProducts);
+      clearInputs();
     }
 
     const clearInputs = () => {
-        setName('');
-        setPrice('');
-        setPhoto(null);
+      setName('');
+      setPrice('');
+      setPhoto(null);
     };
 
     const saveProducts = async (products) => {
-        try {
-          await AsyncStorage.setItem('products', JSON.stringify(products));y
-        } catch (error) {
-          console.error('Failed to save products', error);
+      try {
+        await AsyncStorage.setItem('products', JSON.stringify(products));
+      } catch (error) {
+        console.error('Failed to save products', error);
+      }
+    };
+
+  const loadProducts = async () => {
+      try {
+        const savedProducts = await AsyncStorage.getItem('products');
+        if (savedProducts) {
+          setProducts(JSON.parse(savedProducts));
         }
-    };
+      } catch (error) {
+        console.error('Failed to load products', error);
+      }
+  };
 
-    const loadProducts = async () => {
-        try {
-          const savedProducts = await AsyncStorage.getItem('products');
-          if (savedProducts) {
-            setProducts(JSON.parse(savedProducts));
-          }
-        } catch (error) {
-          console.error('Failed to load products', error);
-        }
-    };
-    
-    const pickImage = () => {
-        // ImagePicker.showImagePicker({}, (response) => {
-        //   if (response.uri) {
-        //     setPhoto(response.uri);
-        //   }
-        // });
-    };
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
 
-    const notifyUser = () => {
-        Notifications.setNotificationHandler({
-            shouldShowAlert: true,
-            shouldPlaySound: false,
-            shouldSetBadge: false,
-        });
+    if (!result.canceled) {
+      setPhoto(result.assets[0].uri);
+    }
+  };
 
-        Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Look at that notification',
-              body: 'Maximum number of products (5) reached!',
-            },
-            // trigger: null,
-          });
-    };
-    
-    React.useEffect(() => {
-        loadProducts();
-    }, []);
+  const notifyUser = () => {
+      Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+              shouldShowAlert: true,
+              shouldPlaySound: false,
+              shouldSetBadge: false,
+          }),
+      });
+
+      Notifications.scheduleNotificationAsync({
+          content: {
+            title: 'Notification',
+            body: 'Maximum number of products (5) reached!',
+          },
+          trigger: null,
+      });
+  };
+  
+  React.useEffect(() => {
+      loadProducts();
+  }, []);
 
     return (
         <View style={styles.container}>
@@ -85,7 +99,7 @@ const ProductManagement = () => {
                 onChangeText={setPrice}
                 keyboardType="numeric"
             />
-            <Button title="Pick a Photo" onPress={pickImage} />
+            <Button title="Pick an image from camera roll" onPress={pickImage} />
                 {photo && <Image source={{ uri: photo }} style={styles.image} />}
             <Button title="Add Product" onPress={addProduct} />
             <FlatList
@@ -105,27 +119,27 @@ const ProductManagement = () => {
 
 
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      padding: 16,
-    },
-    input: {
-      height: 40,
-      borderColor: 'gray',
-      borderWidth: 1,
-      marginBottom: 12,
-      padding: 8,
-    },
-    image: {
-      width: 100,
-      height: 100,
-      marginBottom: 12,
-    },
-    product: {
-      padding: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: 'gray',
-    },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 12,
+    padding: 8,
+  },
+  image: {
+    width: 100,
+    height: 100,
+    marginBottom: 12,
+  },
+  product: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'gray',
+  },
 });
 
 
